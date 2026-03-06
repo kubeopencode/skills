@@ -127,7 +127,7 @@ spec:
   agentRef:
     name: <agent-name>
     namespace: <agent-namespace>  # omit if same as task namespace
-  instruction: |
+  description: |
     <user's task description in natural language>
 ```
 
@@ -143,7 +143,7 @@ spec:
   taskTemplateRef:
     name: <template-name>
     namespace: <template-namespace>  # omit if same as task namespace
-  instruction: |
+  description: |
     <override description, or omit to use template's>
 ```
 
@@ -158,7 +158,7 @@ metadata:
 spec:
   agentRef:
     name: <agent-name>
-  instruction: |
+  description: |
     <task description>
   contexts:
     - name: extra-context

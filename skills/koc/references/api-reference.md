@@ -47,6 +47,7 @@ Detailed field reference for KubeOpenCode CRDs. API Group: `kubeopencode.io/v1al
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `profile` | string | No | Brief human-readable summary of the Agent's purpose and capabilities. Visible via `-o wide`. |
 | `agentImage` | string | No | OpenCode init container image. Default: `quay.io/kubeopencode/kubeopencode-agent-opencode:latest`. |
 | `executorImage` | string | No | Main worker container image. Default: `quay.io/kubeopencode/kubeopencode-agent-devbox:latest`. |
 | `attachImage` | string | No | Lightweight image for server-mode attach pods. |
