@@ -8,8 +8,15 @@ These skills follow the [Agent Skills specification](https://agentskills.io/spec
 
 ### Marketplace
 
+First, add the marketplace source:
+
 ```
 /plugin marketplace add kubeopencode/skills
+```
+
+Then, install the plugin:
+
+```
 /plugin install kubeopencode@kubeopencode-skills
 ```
 
