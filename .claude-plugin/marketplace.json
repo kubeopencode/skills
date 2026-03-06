@@ -1,0 +1,15 @@
+{
+  "name": "kubeopencode-skills",
+  "owner": {
+    "name": "KubeOpenCode",
+    "url": "https://github.com/kubeopencode"
+  },
+  "plugins": [
+    {
+      "name": "kubeopencode",
+      "source": "./",
+      "description": "Skills for managing KubeOpenCode AI tasks and agents on Kubernetes",
+      "version": "1.0.0"
+    }
+  ]
+}

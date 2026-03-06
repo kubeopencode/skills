@@ -1,0 +1,20 @@
+{
+  "name": "kubeopencode",
+  "version": "1.0.0",
+  "description": "Manage KubeOpenCode AI tasks and agents on Kubernetes. Create tasks, list agents, check status, view logs, and monitor progress using kubectl.",
+  "author": {
+    "name": "KubeOpenCode",
+    "url": "https://github.com/kubeopencode"
+  },
+  "repository": "https://github.com/kubeopencode/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "kubeopencode",
+    "kubernetes",
+    "ai-agent",
+    "opencode",
+    "kubectl",
+    "task",
+    "agent"
+  ]
+}
