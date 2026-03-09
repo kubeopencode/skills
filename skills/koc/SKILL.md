@@ -204,7 +204,7 @@ First resolve pod info from the task status:
 # Get pod name and namespace, then fetch logs — all in one call
 POD_NAME=$(kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <task-name> -n <task-namespace> -o jsonpath='{.status.podName}')
 POD_NS=$(kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <task-name> -n <task-namespace> -o jsonpath='{.status.podNamespace}')
-kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" logs "$POD_NAME" -n "$POD_NS" -c executor
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" logs "$POD_NAME" -n "$POD_NS" -c agent
 ```
 
 If the task is still running, add `--tail=100` to show recent logs.
