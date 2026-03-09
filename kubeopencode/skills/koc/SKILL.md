@@ -40,7 +40,7 @@ Requires `kubectl` configured with access to a cluster running KubeOpenCode.
 - **Pod Naming**: `<task-name>-pod` (same namespace), `<task-ns>-<task-name>-pod` (cross-namespace)
 - **Pod Location**: Pod always runs in the Agent's namespace
 
-For detailed field reference, read: `skills/koc/references/api-reference.md`
+For detailed field reference, read: `references/api-reference.md`
 
 ## Operations
 

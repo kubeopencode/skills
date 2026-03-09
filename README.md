@@ -40,7 +40,7 @@ Or copy just the `skills/` directory if you already have a `.claude` folder:
 
 ```sh
 git clone https://github.com/kubeopencode/skills.git /tmp/kubeopencode-skills
-cp -r /tmp/kubeopencode-skills/skills/ /path/to/your/project/.claude/skills/
+cp -r /tmp/kubeopencode-skills/kubeopencode/skills/ /path/to/your/project/.claude/skills/
 ```
 
 See the [Claude Skills documentation](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/skills) for more details.
@@ -53,7 +53,7 @@ Clone the entire repo into the OpenCode skills directory (`~/.opencode/skills/`)
 git clone https://github.com/kubeopencode/skills.git ~/.opencode/skills/kubeopencode-skills
 ```
 
-Do not copy only the inner `skills/` folder — clone the full repo so the directory structure is `~/.opencode/skills/kubeopencode-skills/skills/<skill-name>/SKILL.md`.
+Do not copy only the inner `skills/` folder — clone the full repo so the directory structure is `~/.opencode/skills/kubeopencode-skills/kubeopencode/skills/<skill-name>/SKILL.md`.
 
 OpenCode auto-discovers all `SKILL.md` files under `~/.opencode/skills/`. No changes to `opencode.json` or any config file are needed. Skills become available after restarting OpenCode.
 
@@ -63,7 +63,7 @@ Copy the `skills/` directory into your Codex skills path (typically `~/.codex/sk
 
 ```sh
 git clone https://github.com/kubeopencode/skills.git /tmp/kubeopencode-skills
-cp -r /tmp/kubeopencode-skills/skills/ ~/.codex/skills/
+cp -r /tmp/kubeopencode-skills/kubeopencode/skills/ ~/.codex/skills/
 ```
 
 See the [Agent Skills specification](https://agentskills.io/specification) for the standard skill format.
@@ -72,7 +72,7 @@ See the [Agent Skills specification](https://agentskills.io/specification) for t
 
 | Skill | Description |
 |-------|-------------|
-| [koc](skills/koc) | Manage KubeOpenCode AI tasks and agents on Kubernetes — create tasks, list agents, check status, view logs, stop tasks, and monitor progress |
+| [koc](kubeopencode/skills/koc) | Manage KubeOpenCode AI tasks and agents on Kubernetes — create tasks, list agents, check status, view logs, stop tasks, and monitor progress |
 
 ## Configuration
 

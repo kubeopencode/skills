@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "kubeopencode",
-      "source": "./",
+      "source": "./kubeopencode",
       "description": "Skills for managing KubeOpenCode AI tasks and agents on Kubernetes",
       "version": "1.0.0"
     }
