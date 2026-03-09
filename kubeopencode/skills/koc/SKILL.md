@@ -11,6 +11,8 @@ description: >
   (Task, Agent, TaskTemplate). Also trigger when users say things like "run this
   on the cluster", "use agent X to do Y", "what's my task doing", "show me the
   logs", "is it done yet", or refer to kubeopencode, tk, ag, or tt resources.
+  Supports namespace flags: --namespace/--ns (both), --task-namespace/--task-ns,
+  --agent-namespace/--agent-ns to override default namespace settings.
 ---
 
 # KubeOpenCode Skill
@@ -31,6 +33,25 @@ Requires `kubectl` configured with access to a cluster running KubeOpenCode.
 
 **CRITICAL**: Every `kubectl` command MUST include `--kubeconfig "$KUBEOPENCODE_KUBECONFIG"`. If this env var is not set, ask the user to set it before proceeding — do NOT fall back to the default kubeconfig. Check this env var in each Bash call since shell state does not persist between calls.
 
+### Namespace Flags
+
+Users can pass namespace flags as skill arguments to override the default environment variables for the current invocation:
+
+| Flag | Short Form | Description |
+|------|------------|-------------|
+| `--task-namespace <ns>` | `--task-ns <ns>` | Override `KUBEOPENCODE_DEFAULT_TASK_NAMESPACE` for this invocation |
+| `--agent-namespace <ns>` | `--agent-ns <ns>` | Override `KUBEOPENCODE_DEFAULT_AGENT_NAMESPACE` for this invocation |
+| `--namespace <ns>` | `--ns <ns>` | Set **both** task and agent namespace (shorthand for when they are the same) |
+
+**Precedence**: `--namespace`/`--ns` sets both, but `--task-namespace` and `--agent-namespace` take higher priority if also specified. For example, `--ns default --agent-ns agents` means task namespace is `default` and agent namespace is `agents`.
+
+**Examples:**
+```
+/koc --ns production list tasks
+/koc --task-ns tasks --agent-ns agents create a task to fix the login bug
+/koc --agent-namespace monitoring list agents
+```
+
 ## API Quick Reference
 
 - **API Group**: `kubeopencode.io/v1alpha1`
@@ -43,6 +64,8 @@ Requires `kubectl` configured with access to a cluster running KubeOpenCode.
 For detailed field reference, read: `references/api-reference.md`
 
 ## Operations
+
+**Namespace flag behavior for list/get operations**: When `--agent-namespace`/`--agent-ns` is provided, use it for agent operations (List Agents, Get Agent Details). When `--task-namespace`/`--task-ns` is provided, use it for task operations (List Tasks, Get Task Status, etc.). When `--namespace`/`--ns` is provided, use it for both. If no flag or env var is set, fall back to `--all-namespaces` for list operations.
 
 ### 1. List Agents
 
@@ -106,10 +129,17 @@ Show: name, phase, agent, pod, pod namespace, age.
      > Which agent would you like to use? (1/2)
    - **No match**: Show all available agents with profiles and ask the user to choose.
 
-**Namespace Resolution Order:**
-1. User-specified namespace
-2. `KUBEOPENCODE_DEFAULT_TASK_NAMESPACE` env var
-3. Ask user
+**Task Namespace Resolution Order:**
+1. `--task-namespace` / `--task-ns` flag (or `--namespace` / `--ns` if task-specific flag not given)
+2. User-specified namespace in natural language
+3. `KUBEOPENCODE_DEFAULT_TASK_NAMESPACE` env var
+4. Ask user
+
+**Agent Namespace Resolution Order:**
+1. `--agent-namespace` / `--agent-ns` flag (or `--namespace` / `--ns` if agent-specific flag not given)
+2. User-specified agent namespace in natural language
+3. `KUBEOPENCODE_DEFAULT_AGENT_NAMESPACE` env var
+4. Same as resolved task namespace
 
 **Task Name:** User-specified or auto-generate as `task-<short-slug>-<4-random-hex>`.
 
