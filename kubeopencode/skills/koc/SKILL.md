@@ -8,16 +8,16 @@ description: >
   user wants to: create or run an AI task on the cluster, see what agents are
   available, check on a running task, view task output or logs, stop a task,
   use a specific agent for a job, or anything involving KubeOpenCode resources
-  (Task, Agent, TaskTemplate). Also trigger when users say things like "run this
+  (Task, Agent). Also trigger when users say things like "run this
   on the cluster", "use agent X to do Y", "what's my task doing", "show me the
-  logs", "is it done yet", or refer to kubeopencode, tk, ag, or tt resources.
+  logs", "is it done yet", or refer to kubeopencode, tk, or ag resources.
   Supports namespace flags: --namespace/--ns (both), --task-namespace/--task-ns,
   --agent-namespace/--agent-ns to override default namespace settings.
 ---
 
 # KubeOpenCode Skill
 
-Interact with KubeOpenCode Kubernetes resources (Task, Agent, TaskTemplate) using kubectl.
+Interact with KubeOpenCode Kubernetes resources (Task, Agent) using kubectl.
 
 ## Prerequisites
 
@@ -55,7 +55,7 @@ Users can pass namespace flags as skill arguments to override the default enviro
 ## API Quick Reference
 
 - **API Group**: `kubeopencode.io/v1alpha1`
-- **Resources & Short Names**: Task (`tk`), Agent (`ag`), TaskTemplate (`tt`), KubeOpenCodeConfig (`ktc`)
+- **Resources & Short Names**: Task (`tk`), Agent (`ag`), KubeOpenCodeConfig (`ktc`)
 - **Task Phases**: `Pending` -> `Queued` -> `Running` -> `Completed` | `Failed`
 - **Stop Annotation**: `kubeopencode.io/stop=true`
 - **Pod Naming**: `<task-name>-pod` (same namespace), `<task-ns>-<task-name>-pod` (cross-namespace)
@@ -90,19 +90,7 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get ag <name> -n <namespace> -o 
 
 Summarize: profile, executorImage, workspaceDir, maxConcurrentTasks, quota, serverConfig presence, credentials (names only — never show secret values), allowedNamespaces.
 
-### 3. List TaskTemplates
-
-```bash
-# All namespaces
-kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tt --all-namespaces
-
-# Specific namespace
-kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tt -n <namespace>
-```
-
-Show: name, namespace, agentRef, age.
-
-### 4. List Tasks
+### 3. List Tasks
 
 ```bash
 # All namespaces
@@ -114,7 +102,7 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk -n <namespace>
 
 Show: name, phase, agent, pod, pod namespace, age.
 
-### 5. Create Task
+### 4. Create Task
 
 **Agent Resolution Order:**
 1. User-specified agent name
@@ -161,22 +149,6 @@ spec:
     <user's task description in natural language>
 ```
 
-#### Task with TaskTemplate
-
-```yaml
-apiVersion: kubeopencode.io/v1alpha1
-kind: Task
-metadata:
-  name: <task-name>
-  namespace: <namespace>
-spec:
-  taskTemplateRef:
-    name: <template-name>
-    namespace: <template-namespace>  # omit if same as task namespace
-  description: |
-    <override description, or omit to use template's>
-```
-
 #### Task with Inline Contexts
 
 ```yaml
@@ -208,9 +180,9 @@ spec:
 kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" apply -f /tmp/kubeopencode-task-<name>.yaml
 ```
 
-After successful creation, **automatically start monitoring** (see Operation 9).
+After successful creation, **automatically start monitoring** (see Operation 8).
 
-### 6. Get Task Status
+### 5. Get Task Status
 
 ```bash
 kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <name> -n <namespace> -o yaml
@@ -227,7 +199,7 @@ Extract and present:
 Present a concise summary, e.g.:
 > Task `my-task` is **Running** (started 5m ago). Pod: `my-task-pod` in namespace `default`.
 
-### 7. Get Task Logs
+### 6. Get Task Logs
 
 First resolve pod info from the task status:
 ```bash
@@ -240,7 +212,7 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" logs "$POD_NAME" -n "$POD_NS" -c
 If the task is still running, add `--tail=100` to show recent logs.
 If the pod is not found, the task may have been cleaned up — inform the user.
 
-### 8. Stop Task
+### 7. Stop Task
 
 ```bash
 kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" annotate task <name> -n <namespace> kubeopencode.io/stop=true
@@ -248,7 +220,7 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" annotate task <name> -n <namespa
 
 **Always warn the user first**: Stopping a task deletes the pod, and **logs will be lost** unless an external log aggregation system is in place. Ask for confirmation before executing.
 
-### 9. Delete Task
+### 8. Delete Task
 
 ```bash
 kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" delete task <name> -n <namespace>
@@ -256,9 +228,9 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" delete task <name> -n <namespace
 
 Deleting a Task cascades to its Pod and ConfigMap via finalizer. Ask for confirmation — this is irreversible.
 
-Only use delete when the user explicitly wants to remove the Task resource. For stopping a running task, prefer the stop annotation (Operation 8).
+Only use delete when the user explicitly wants to remove the Task resource. For stopping a running task, prefer the stop annotation (Operation 7).
 
-### 10. Monitor Task
+### 9. Monitor Task
 
 After creating a task, poll periodically until completion. Since shell state doesn't persist between calls, run each check as a standalone command.
 
@@ -279,7 +251,7 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <name> -n <namespace> -o 
 
 - **Pending/Queued**: Report status, wait, check again. If Queued, mention the agent may be at capacity.
 - **Running**: Report elapsed time, wait, check again.
-- **Completed**: Fetch logs (Operation 7), summarize the output.
+- **Completed**: Fetch logs (Operation 6), summarize the output.
 - **Failed**: Fetch logs + conditions, report the error details.
 - **Timeout reached**: Report current status and ask user whether to continue monitoring or stop the task.
 

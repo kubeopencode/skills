@@ -8,12 +8,9 @@ Detailed field reference for KubeOpenCode CRDs. API Group: `kubeopencode.io/v1al
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `agentRef` | AgentReference | No* | Agent to use. Required unless taskTemplateRef provides one. |
-| `taskTemplateRef` | TaskTemplateReference | No | Reference to a TaskTemplate for base configuration. |
+| `agentRef` | AgentReference | Yes | Agent to use. |
 | `description` | string | No | Task instruction/prompt. Written to `${WORKSPACE_DIR}/task.md`. |
 | `contexts` | []ContextItem | No | Additional context for the task. |
-
-*Required unless `taskTemplateRef` with `agentRef` is used.
 
 ### AgentReference
 
@@ -21,13 +18,6 @@ Detailed field reference for KubeOpenCode CRDs. API Group: `kubeopencode.io/v1al
 |-------|------|----------|-------------|
 | `name` | string | Yes | Agent name. |
 | `namespace` | string | No | Agent namespace. If empty, defaults to task's namespace. Pod runs here. |
-
-### TaskTemplateReference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | Yes | TaskTemplate name. |
-| `namespace` | string | No | TaskTemplate namespace. If empty, defaults to task's namespace. |
 
 ### TaskExecutionStatus
 
@@ -86,18 +76,6 @@ Detailed field reference for KubeOpenCode CRDs. API Group: `kubeopencode.io/v1al
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `port` | int32 | No | Server port (default: 4096, range: 1-65535). |
-
-## TaskTemplate (`tt`)
-
-### TaskTemplateSpec
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `description` | string | No | Default task instruction. Overridden by Task's description. |
-| `agentRef` | AgentReference | No | Default agent. Overridden by Task's agentRef. |
-| `contexts` | []ContextItem | No | Default contexts. Merged with Task contexts (template first, then task). |
-
-**Merge Strategy:** Task takes precedence for `agentRef` and `description`. Contexts are concatenated (template first).
 
 ## ContextItem
 
