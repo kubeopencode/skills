@@ -4,13 +4,16 @@ description: >
   Manage KubeOpenCode AI tasks and agents on Kubernetes. This skill handles
   anything related to running AI-powered tasks on a Kubernetes cluster via
   KubeOpenCode — creating tasks, listing agents, checking task status, viewing
-  logs, stopping tasks, and monitoring task progress. Trigger this skill when the
-  user wants to: create or run an AI task on the cluster, see what agents are
-  available, check on a running task, view task output or logs, stop a task,
-  use a specific agent for a job, or anything involving KubeOpenCode resources
+  logs, stopping tasks, monitoring task progress, and scheduling recurring tasks.
+  Trigger this skill when the user wants to: create or run an AI task on the
+  cluster, see what agents are available, check on a running task, view task
+  output or logs, stop a task, use a specific agent for a job, schedule a
+  recurring task, list schedules, create a cronjob, set up a daily/weekly task,
+  suspend/resume a schedule, or anything involving KubeOpenCode resources
   (Task, Agent). Also trigger when users say things like "run this
   on the cluster", "use agent X to do Y", "what's my task doing", "show me the
-  logs", "is it done yet", or refer to kubeopencode, tk, or ag resources.
+  logs", "is it done yet", "schedule a daily task", "run this every hour",
+  or refer to kubeopencode, tk, or ag resources.
   Supports namespace flags: --namespace/--ns (both), --task-namespace/--task-ns,
   --agent-namespace/--agent-ns to override default namespace settings.
 ---
@@ -60,6 +63,9 @@ Users can pass namespace flags as skill arguments to override the default enviro
 - **Stop Annotation**: `kubeopencode.io/stop=true`
 - **Pod Naming**: `<task-name>-pod` (same namespace), `<task-ns>-<task-name>-pod` (cross-namespace)
 - **Pod Location**: Pod always runs in the Agent's namespace
+- **Scheduled Tasks**: Standard K8s CronJob with label `kubeopencode.io/scheduler=true`
+- **Scheduler ServiceAccount**: `kubeopencode-task-scheduler` (auto-created with RBAC if missing)
+- **Schedule Name**: `schedule-<short-slug>-<4-random-hex>`
 
 For detailed field reference, read: `references/api-reference.md`
 
@@ -258,6 +264,196 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <name> -n <namespace> -o 
 **On completion, present a summary:**
 > Task `my-task` completed in 3m 42s.
 > [Summary of the agent's output from logs]
+
+### 10. Schedule Task
+
+Create a Kubernetes CronJob that periodically generates KubeOpenCode Tasks. This enables recurring/scheduled task execution without a custom CRD.
+
+**Natural Language → Cron Reference:**
+
+| Natural Language | Cron Expression | Notes |
+|---|---|---|
+| every hour | `0 * * * *` | |
+| every day / daily | `0 0 * * *` | Midnight UTC |
+| every day at 9am | `0 9 * * *` | |
+| every weekday | `0 0 * * 1-5` | |
+| every Monday at 9am | `0 9 * * 1` | |
+| every week / weekly | `0 0 * * 0` | Sunday midnight |
+| every month / monthly | `0 0 1 * *` | |
+
+If the user specifies a schedule interval shorter than 15 minutes, warn them about resource consumption and confirm before proceeding.
+
+**Flow:**
+
+1. Parse the user's natural language schedule into a cron expression using the reference table above
+2. Resolve the agent (reuse Operation 4 agent resolution logic)
+3. Resolve the task namespace (reuse Operation 4 namespace resolution logic)
+4. Check if ServiceAccount `kubeopencode-task-scheduler` exists in the task namespace:
+   ```bash
+   kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get sa kubeopencode-task-scheduler -n <task-namespace> 2>/dev/null
+   ```
+5. If the ServiceAccount does **not** exist, generate RBAC resources (ServiceAccount + Role + RoleBinding) as YAML
+6. Generate the CronJob YAML
+7. Show all generated YAML to the user for confirmation, then apply
+
+**RBAC Resources** (only created if ServiceAccount does not exist):
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubeopencode-task-scheduler
+  namespace: <task-namespace>
+  labels:
+    kubeopencode.io/scheduler: "true"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kubeopencode-task-scheduler
+  namespace: <task-namespace>
+  labels:
+    kubeopencode.io/scheduler: "true"
+rules:
+  - apiGroups: ["kubeopencode.io"]
+    resources: ["tasks"]
+    verbs: ["create", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kubeopencode-task-scheduler
+  namespace: <task-namespace>
+  labels:
+    kubeopencode.io/scheduler: "true"
+subjects:
+  - kind: ServiceAccount
+    name: kubeopencode-task-scheduler
+    namespace: <task-namespace>
+roleRef:
+  kind: Role
+  name: kubeopencode-task-scheduler
+  apiGroup: rbac.authorization.k8s.io
+```
+
+**CronJob YAML:**
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: schedule-<slug>-<hex>
+  namespace: <task-namespace>
+  labels:
+    kubeopencode.io/scheduler: "true"
+    kubeopencode.io/agent-name: "<agent>"
+    kubeopencode.io/agent-namespace: "<agent-ns>"
+  annotations:
+    kubeopencode.io/task-description: "<description>"
+    kubeopencode.io/created-by: "koc-skill"
+spec:
+  schedule: "<cron>"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            kubeopencode.io/scheduler: "true"
+        spec:
+          serviceAccountName: kubeopencode-task-scheduler
+          restartPolicy: Never
+          containers:
+            - name: task-creator
+              image: bitnami/kubectl:1.31
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  TASK_NAME="task-<slug>-$(head -c 2 /dev/urandom | od -A n -t x1 | tr -d ' \n')"
+                  cat <<'TASKEOF' | sed "s/__KUBEOPENCODE_TASK_NAME__/$TASK_NAME/" | kubectl apply -f -
+                  apiVersion: kubeopencode.io/v1alpha1
+                  kind: Task
+                  metadata:
+                    name: __KUBEOPENCODE_TASK_NAME__
+                    namespace: <task-namespace>
+                    labels:
+                      kubeopencode.io/scheduled-by: schedule-<slug>-<hex>
+                  spec:
+                    agentRef:
+                      name: <agent>
+                      namespace: <agent-ns>
+                    description: |
+                      <user's task description>
+                  TASKEOF
+```
+
+**Key design points:**
+- CronJob runs in-cluster using the ServiceAccount's credentials — no `KUBEOPENCODE_KUBECONFIG` needed inside the Job
+- `concurrencyPolicy: Forbid` prevents overlapping executions
+- Each created Task gets label `kubeopencode.io/scheduled-by` for traceability back to the CronJob
+- `<slug>` is a short kebab-case summary of the task description (3-4 words max)
+- `<hex>` is 4 random hex characters for uniqueness
+
+**Apply the resources:**
+```bash
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" apply -f /tmp/kubeopencode-schedule-<name>.yaml
+```
+
+### 11. List Scheduled Tasks
+
+```bash
+# Specific namespace
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get cronjobs \
+  -l kubeopencode.io/scheduler=true \
+  -n <namespace> \
+  -o custom-columns=NAME:.metadata.name,SCHEDULE:.spec.schedule,AGENT:.metadata.labels.kubeopencode\.io/agent-name,SUSPENDED:.spec.suspend,LAST-SCHEDULE:.status.lastScheduleTime
+
+# All namespaces (when no namespace is specified or configured)
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get cronjobs \
+  -l kubeopencode.io/scheduler=true \
+  --all-namespaces \
+  -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,SCHEDULE:.spec.schedule,AGENT:.metadata.labels.kubeopencode\.io/agent-name,SUSPENDED:.spec.suspend,LAST-SCHEDULE:.status.lastScheduleTime
+```
+
+Use the same namespace resolution as list operations: if a namespace flag or env var is set, use it; otherwise use `--all-namespaces`.
+
+### 12. Delete Scheduled Task
+
+```bash
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" delete cronjob <name> -n <namespace>
+```
+
+**Always ask for confirmation before deleting.** Show the CronJob's schedule and description from its annotations.
+
+After deletion, check if this was the last KubeOpenCode-managed CronJob in the namespace:
+```bash
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get cronjobs \
+  -l kubeopencode.io/scheduler=true \
+  -n <namespace> --no-headers | wc -l
+```
+
+If the count is 0 (no remaining schedules), ask the user if they want to clean up the RBAC resources:
+```bash
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" delete sa,role,rolebinding kubeopencode-task-scheduler -n <namespace>
+```
+
+### 13. Suspend/Resume Scheduled Task
+
+```bash
+# Suspend a schedule
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" patch cronjob <name> -n <namespace> \
+  -p '{"spec":{"suspend":true}}'
+
+# Resume a schedule
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" patch cronjob <name> -n <namespace> \
+  -p '{"spec":{"suspend":false}}'
+```
+
+Show the current state after patching to confirm the change took effect.
 
 ## Important Notes
 

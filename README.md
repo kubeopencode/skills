@@ -72,7 +72,7 @@ See the [Agent Skills specification](https://agentskills.io/specification) for t
 
 | Skill | Description |
 |-------|-------------|
-| [koc](kubeopencode/skills/koc) | Manage KubeOpenCode AI tasks and agents on Kubernetes — create tasks, list agents, check status, view logs, stop tasks, and monitor progress |
+| [koc](kubeopencode/skills/koc) | Manage KubeOpenCode AI tasks and agents on Kubernetes — create tasks, list agents, check status, view logs, stop tasks, monitor progress, and schedule recurring tasks |
 
 ## Configuration
 
@@ -95,7 +95,7 @@ Once installed, your AI coding agent can:
 - **Monitor tasks** — track task progress with automatic polling
 - **View logs** — fetch task output from pod logs
 - **Stop tasks** — gracefully stop running tasks
-- **Manage templates** — work with reusable TaskTemplates
+- **Schedule tasks** — set up recurring tasks with natural language schedules
 
 Example prompts:
 
@@ -104,6 +104,7 @@ Example prompts:
 - "What's the status of my task?"
 - "Show me the logs for task fix-bug-abc1"
 - "Stop the running task"
+- "Schedule a daily task to check for dependency updates using the go-agent"
 
 ## License
 
