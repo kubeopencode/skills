@@ -14,8 +14,7 @@ description: >
   on the cluster", "use agent X to do Y", "what's my task doing", "show me the
   logs", "is it done yet", "schedule a daily task", "run this every hour",
   or refer to kubeopencode, tk, or ag resources.
-  Supports namespace flags: --namespace/--ns (both), --task-namespace/--task-ns,
-  --agent-namespace/--agent-ns to override default namespace settings.
+  Supports namespace flag: --namespace/--ns to override default namespace.
 ---
 
 # KubeOpenCode Skill
@@ -31,28 +30,22 @@ Requires `kubectl` configured with access to a cluster running KubeOpenCode.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `KUBEOPENCODE_KUBECONFIG` | **Yes** | Path to kubeconfig for the KubeOpenCode cluster |
-| `KUBEOPENCODE_DEFAULT_TASK_NAMESPACE` | No | Default Task namespace (if unset, use `--all-namespaces` for list, ask on create) |
-| `KUBEOPENCODE_DEFAULT_AGENT_NAMESPACE` | No | Default Agent namespace (if unset, same as task namespace) |
+| `KUBEOPENCODE_DEFAULT_NAMESPACE` | No | Default namespace for all operations (if unset, use `--all-namespaces` for list, ask on create) |
 
 **CRITICAL**: Every `kubectl` command MUST include `--kubeconfig "$KUBEOPENCODE_KUBECONFIG"`. If this env var is not set, ask the user to set it before proceeding — do NOT fall back to the default kubeconfig. Check this env var in each Bash call since shell state does not persist between calls.
 
-### Namespace Flags
+### Namespace Flag
 
-Users can pass namespace flags as skill arguments to override the default environment variables for the current invocation:
+Users can pass a namespace flag as a skill argument to override the default namespace for the current invocation:
 
 | Flag | Short Form | Description |
 |------|------------|-------------|
-| `--task-namespace <ns>` | `--task-ns <ns>` | Override `KUBEOPENCODE_DEFAULT_TASK_NAMESPACE` for this invocation |
-| `--agent-namespace <ns>` | `--agent-ns <ns>` | Override `KUBEOPENCODE_DEFAULT_AGENT_NAMESPACE` for this invocation |
-| `--namespace <ns>` | `--ns <ns>` | Set **both** task and agent namespace (shorthand for when they are the same) |
-
-**Precedence**: `--namespace`/`--ns` sets both, but `--task-namespace` and `--agent-namespace` take higher priority if also specified. For example, `--ns default --agent-ns agents` means task namespace is `default` and agent namespace is `agents`.
+| `--namespace <ns>` | `--ns <ns>` | Override `KUBEOPENCODE_DEFAULT_NAMESPACE` for this invocation |
 
 **Examples:**
 ```
 /koc --ns production list tasks
-/koc --task-ns tasks --agent-ns agents create a task to fix the login bug
-/koc --agent-namespace monitoring list agents
+/koc --namespace monitoring list agents
 ```
 
 ## API Quick Reference
@@ -61,8 +54,8 @@ Users can pass namespace flags as skill arguments to override the default enviro
 - **Resources & Short Names**: Task (`tk`), Agent (`ag`), KubeOpenCodeConfig (`ktc`)
 - **Task Phases**: `Pending` -> `Queued` -> `Running` -> `Completed` | `Failed`
 - **Stop Annotation**: `kubeopencode.io/stop=true`
-- **Pod Naming**: `<task-name>-pod` (same namespace), `<task-ns>-<task-name>-pod` (cross-namespace)
-- **Pod Location**: Pod always runs in the Agent's namespace
+- **Pod Naming**: `<task-name>-pod`
+- **Pod Location**: Pod runs in the same namespace as the Task
 - **Scheduled Tasks**: Standard K8s CronJob with label `kubeopencode.io/scheduler=true`
 - **Scheduler ServiceAccount**: `kubeopencode-task-scheduler` (auto-created with RBAC if missing)
 - **Schedule Name**: `schedule-<short-slug>-<4-random-hex>`
@@ -71,7 +64,7 @@ For detailed field reference, read: `references/api-reference.md`
 
 ## Operations
 
-**Namespace flag behavior for list/get operations**: When `--agent-namespace`/`--agent-ns` is provided, use it for agent operations (List Agents, Get Agent Details). When `--task-namespace`/`--task-ns` is provided, use it for task operations (List Tasks, Get Task Status, etc.). When `--namespace`/`--ns` is provided, use it for both. If no flag or env var is set, fall back to `--all-namespaces` for list operations.
+**Namespace flag behavior for list/get operations**: When `--namespace`/`--ns` is provided, use it for all operations. If no flag or env var is set, fall back to `--all-namespaces` for list operations.
 
 ### 1. List Agents
 
@@ -94,7 +87,7 @@ Show: name, namespace, serviceAccount, age. With `-o wide`: profile, executorIma
 kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get ag <name> -n <namespace> -o yaml
 ```
 
-Summarize: profile, executorImage, workspaceDir, maxConcurrentTasks, quota, serverConfig presence, credentials (names only — never show secret values), allowedNamespaces.
+Summarize: profile, executorImage, workspaceDir, maxConcurrentTasks, quota, serverConfig presence, credentials (names only — never show secret values).
 
 ### 3. List Tasks
 
@@ -106,7 +99,7 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk --all-namespaces
 kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk -n <namespace>
 ```
 
-Show: name, phase, agent, pod, pod namespace, age.
+Show: name, phase, agent, pod, age.
 
 ### 4. Create Task
 
@@ -123,17 +116,11 @@ Show: name, phase, agent, pod, pod namespace, age.
      > Which agent would you like to use? (1/2)
    - **No match**: Show all available agents with profiles and ask the user to choose.
 
-**Task Namespace Resolution Order:**
-1. `--task-namespace` / `--task-ns` flag (or `--namespace` / `--ns` if task-specific flag not given)
+**Namespace Resolution Order:**
+1. `--namespace` / `--ns` flag
 2. User-specified namespace in natural language
-3. `KUBEOPENCODE_DEFAULT_TASK_NAMESPACE` env var
+3. `KUBEOPENCODE_DEFAULT_NAMESPACE` env var
 4. Ask user
-
-**Agent Namespace Resolution Order:**
-1. `--agent-namespace` / `--agent-ns` flag (or `--namespace` / `--ns` if agent-specific flag not given)
-2. User-specified agent namespace in natural language
-3. `KUBEOPENCODE_DEFAULT_AGENT_NAMESPACE` env var
-4. Same as resolved task namespace
 
 **Task Name:** User-specified or auto-generate as `task-<short-slug>-<4-random-hex>`.
 
@@ -150,7 +137,6 @@ metadata:
 spec:
   agentRef:
     name: <agent-name>
-    namespace: <agent-namespace>  # omit if same as task namespace
   description: |
     <user's task description in natural language>
 ```
@@ -196,23 +182,22 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <name> -n <namespace> -o 
 
 Extract and present:
 - **Phase**: `.status.phase`
-- **Pod**: `.status.podName` in namespace `.status.podNamespace`
-- **Agent**: `.status.agentRef.name` / `.status.agentRef.namespace`
+- **Pod**: `.status.podName`
+- **Agent**: `.status.agentRef.name`
 - **Start Time**: `.status.startTime`
 - **Completion Time**: `.status.completionTime`
 - **Conditions**: `.status.conditions` (type, status, reason, message)
 
 Present a concise summary, e.g.:
-> Task `my-task` is **Running** (started 5m ago). Pod: `my-task-pod` in namespace `default`.
+> Task `my-task` is **Running** (started 5m ago). Pod: `my-task-pod`.
 
 ### 6. Get Task Logs
 
-First resolve pod info from the task status:
+First resolve the pod name from the task status:
 ```bash
-# Get pod name and namespace, then fetch logs — all in one call
-POD_NAME=$(kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <task-name> -n <task-namespace> -o jsonpath='{.status.podName}')
-POD_NS=$(kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <task-name> -n <task-namespace> -o jsonpath='{.status.podNamespace}')
-kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" logs "$POD_NAME" -n "$POD_NS" -c agent
+# Get pod name and fetch logs — pod is in the same namespace as the task
+POD_NAME=$(kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get tk <task-name> -n <namespace> -o jsonpath='{.status.podName}')
+kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" logs "$POD_NAME" -n <namespace> -c agent
 ```
 
 If the task is still running, add `--tail=100` to show recent logs.
@@ -232,7 +217,7 @@ kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" annotate task <name> -n <namespa
 kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" delete task <name> -n <namespace>
 ```
 
-Deleting a Task cascades to its Pod and ConfigMap via finalizer. Ask for confirmation — this is irreversible.
+Deleting a Task cascades to its Pod and ConfigMap via OwnerReference. Ask for confirmation — this is irreversible.
 
 Only use delete when the user explicitly wants to remove the Task resource. For stopping a running task, prefer the stop annotation (Operation 7).
 
@@ -287,10 +272,10 @@ If the user specifies a schedule interval shorter than 15 minutes, warn them abo
 
 1. Parse the user's natural language schedule into a cron expression using the reference table above
 2. Resolve the agent (reuse Operation 4 agent resolution logic)
-3. Resolve the task namespace (reuse Operation 4 namespace resolution logic)
-4. Check if ServiceAccount `kubeopencode-task-scheduler` exists in the task namespace:
+3. Resolve the namespace (reuse Operation 4 namespace resolution logic)
+4. Check if ServiceAccount `kubeopencode-task-scheduler` exists in the namespace:
    ```bash
-   kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get sa kubeopencode-task-scheduler -n <task-namespace> 2>/dev/null
+   kubectl --kubeconfig "$KUBEOPENCODE_KUBECONFIG" get sa kubeopencode-task-scheduler -n <namespace> 2>/dev/null
    ```
 5. If the ServiceAccount does **not** exist, generate RBAC resources (ServiceAccount + Role + RoleBinding) as YAML
 6. Generate the CronJob YAML
@@ -303,7 +288,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kubeopencode-task-scheduler
-  namespace: <task-namespace>
+  namespace: <namespace>
   labels:
     kubeopencode.io/scheduler: "true"
 ---
@@ -311,7 +296,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: kubeopencode-task-scheduler
-  namespace: <task-namespace>
+  namespace: <namespace>
   labels:
     kubeopencode.io/scheduler: "true"
 rules:
@@ -323,13 +308,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: kubeopencode-task-scheduler
-  namespace: <task-namespace>
+  namespace: <namespace>
   labels:
     kubeopencode.io/scheduler: "true"
 subjects:
   - kind: ServiceAccount
     name: kubeopencode-task-scheduler
-    namespace: <task-namespace>
+    namespace: <namespace>
 roleRef:
   kind: Role
   name: kubeopencode-task-scheduler
@@ -343,11 +328,10 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: schedule-<slug>-<hex>
-  namespace: <task-namespace>
+  namespace: <namespace>
   labels:
     kubeopencode.io/scheduler: "true"
     kubeopencode.io/agent-name: "<agent>"
-    kubeopencode.io/agent-namespace: "<agent-ns>"
   annotations:
     kubeopencode.io/task-description: "<description>"
     kubeopencode.io/created-by: "koc-skill"
@@ -379,13 +363,12 @@ spec:
                   kind: Task
                   metadata:
                     name: __KUBEOPENCODE_TASK_NAME__
-                    namespace: <task-namespace>
+                    namespace: <namespace>
                     labels:
                       kubeopencode.io/scheduled-by: schedule-<slug>-<hex>
                   spec:
                     agentRef:
                       name: <agent>
-                      namespace: <agent-ns>
                     description: |
                       <user's task description>
                   TASKEOF
@@ -458,6 +441,6 @@ Show the current state after patching to confirm the change took effect.
 ## Important Notes
 
 - **Never expose secret values** — only show credential names when describing agents.
-- **Cross-namespace**: When `agentRef.namespace` differs from the task namespace, the pod runs in the agent's namespace. This is by design for credential isolation.
+- **Same namespace**: Task and Agent must be in the same namespace. The Pod also runs in this namespace.
 - **Server mode**: If an agent has `serverConfig`, tasks use `--attach` to connect to a persistent server. No special handling needed from the user's perspective.
 - **Cleanup**: Tasks may be automatically cleaned up by `KubeOpenCodeConfig` TTL/retention policies. If a task or its pod is not found, it may have been cleaned up.

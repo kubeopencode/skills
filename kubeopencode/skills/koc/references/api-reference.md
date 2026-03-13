@@ -16,8 +16,7 @@ Detailed field reference for KubeOpenCode CRDs. API Group: `kubeopencode.io/v1al
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Agent name. |
-| `namespace` | string | No | Agent namespace. If empty, defaults to task's namespace. Pod runs here. |
+| `name` | string | Yes | Agent name. Must be in the same namespace as the Task. |
 
 ### TaskExecutionStatus
 
@@ -25,8 +24,7 @@ Detailed field reference for KubeOpenCode CRDs. API Group: `kubeopencode.io/v1al
 |-------|------|-------------|
 | `phase` | TaskPhase | Current phase: Pending, Queued, Running, Completed, Failed. |
 | `agentRef` | AgentReference | Resolved agent reference. |
-| `podName` | string | Pod name running the task. |
-| `podNamespace` | string | Namespace where the pod runs (may differ from task namespace). |
+| `podName` | string | Pod name running the task (in the same namespace as the Task). |
 | `startTime` | Time | When the task started running. |
 | `completionTime` | Time | When the task finished. |
 | `conditions` | []Condition | Standard Kubernetes conditions (Ready, Queued, Stopped). |
@@ -48,7 +46,6 @@ Detailed field reference for KubeOpenCode CRDs. API Group: `kubeopencode.io/v1al
 | `credentials` | []Credential | No | Secrets mounted as env vars or files. |
 | `podSpec` | AgentPodSpec | No | Advanced pod configuration (labels, scheduling, resources, runtimeClass). |
 | `serviceAccountName` | string | Yes | Kubernetes ServiceAccount for agent pods. |
-| `allowedNamespaces` | []string | No | Glob patterns restricting which namespaces can use this agent. Empty = all allowed. |
 | `maxConcurrentTasks` | int32 | No | Max concurrent running tasks. nil/0 = unlimited. |
 | `quota` | QuotaConfig | No | Rate limiting: `maxTaskStarts` per `windowSeconds`. |
 | `serverConfig` | ServerConfig | No | Enables persistent server mode (Deployment + Service). |
