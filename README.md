@@ -81,8 +81,7 @@ The `koc` skill requires the following environment variables:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `KUBEOPENCODE_KUBECONFIG` | **Yes** | Path to kubeconfig for the KubeOpenCode cluster |
-| `KUBEOPENCODE_DEFAULT_TASK_NAMESPACE` | No | Default namespace for Tasks |
-| `KUBEOPENCODE_DEFAULT_AGENT_NAMESPACE` | No | Default namespace for Agents |
+| `KUBEOPENCODE_DEFAULT_NAMESPACE` | No | Default namespace for all operations (Tasks, Agents, CronJobs) |
 
 Set these in your shell profile or project-level environment configuration.
 
